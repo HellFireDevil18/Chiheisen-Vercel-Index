@@ -48,7 +48,7 @@ const MarkdownPreview: FC<{
       )
     },
     // code: to render code blocks with react-syntax-highlighter
-    code: ({ className, children, inline, ...props }) => {
+    code: ({ node, inline, className, children, ...props }) => {
       if (inline) {
         return (
           <code className={className} {...props}>
