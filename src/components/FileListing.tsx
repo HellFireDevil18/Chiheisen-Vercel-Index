@@ -1,6 +1,6 @@
 import type { OdFileObject, OdFolderChildren, OdFolderObject } from '../types'
 import { ParsedUrlQuery } from 'querystring'
-import { FC, MouseEventHandler, SetStateAction, useEffect, useRef, useState } from 'react'
+import { FC, MouseEventHandler, SetStateAction, useEffect, useRef, useState, Fragment } from 'react'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import toast, { Toaster } from 'react-hot-toast'
 import emojiRegex from 'emoji-regex'
@@ -176,14 +176,18 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
     return (
       <PreviewContainer>
-        {error.status === 401 ? <Auth redirect={path} /> : <FourOhFour errorMsg={JSON.stringify(error.message)} />}
+        <div>
+          {error.status === 401 ? <Auth redirect={path} /> : <FourOhFour errorMsg={JSON.stringify(error.message)} />}
+        </div>
       </PreviewContainer>
     )
   }
   if (!data) {
     return (
       <PreviewContainer>
-        <Loading loadingText={t('Loading ...')} />
+        <div>
+          <Loading loadingText={t('Loading ...')} />
+        </div>
       </PreviewContainer>
     )
   }
@@ -438,7 +442,9 @@ const FileListing: FC<{ query?: ParsedUrlQuery }> = ({ query }) => {
 
   return (
     <PreviewContainer>
-      <FourOhFour errorMsg={t('Cannot preview {{path}}', { path })} />
+      <div>
+        <FourOhFour errorMsg={t('Cannot preview {{path}}', { path })} />
+      </div>
     </PreviewContainer>
   )
 }
