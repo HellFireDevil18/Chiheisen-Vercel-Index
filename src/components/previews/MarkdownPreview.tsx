@@ -17,6 +17,13 @@ import Loading from '../Loading'
 import DownloadButtonGroup from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 
+interface CodeComponentProps {
+  node?: any
+  inline?: boolean
+  className?: string
+  children?: ReactNode
+}
+
 const MarkdownPreview: FC<{
   file: any
   path: string
@@ -48,7 +55,7 @@ const MarkdownPreview: FC<{
       )
     },
     // code: to render code blocks with react-syntax-highlighter
-    code: ({ node, inline, className, children, ...props }) => {
+    code: ({ node, inline, className, children, ...props }: CodeComponentProps) => {
       if (inline) {
         return (
           <code className={className} {...props}>
