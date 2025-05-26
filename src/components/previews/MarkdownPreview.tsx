@@ -7,7 +7,7 @@ import rehypeRaw from 'rehype-raw'
 import { useTranslation } from 'next-i18next'
 import { LightAsync as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrowNight } from 'react-syntax-highlighter/dist/cjs/styles/hljs'
-import type { Components, CodeProps } from 'react-markdown'
+import type { Components } from 'react-markdown'
 
 import 'katex/dist/katex.min.css'
 
@@ -48,7 +48,7 @@ const MarkdownPreview: FC<{
       )
     },
     // code: to render code blocks with react-syntax-highlighter
-    code: ({ node, inline, className, children, ...props }: CodeProps) => {
+    code: ({ node, inline, className, children, ...props }) => {
       if (inline) {
         return (
           <code className={className} {...props}>
