@@ -159,9 +159,8 @@ export async function checkAuthRoute(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   // If method is POST, then the API is called by the client to store acquired tokens
   if (req.method === 'POST') {
-    const { accessToken, accessTokenExpiry, refreshToken } = await req.json()
+    const { accessToken, accessTokenExpiry, refreshToken } = req.body
 
-    
     if (typeof accessToken !== 'string' || typeof refreshToken !== 'string') {
       res.status(400).send('Invalid request body')
       return
@@ -170,12 +169,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // verify identity of the authenticated user with the Microsoft Graph API
     const { data, status } = await getAuthPersonInfo(accessToken)
     if (status !== 200) {
-      return new Response("Non-200 response from Microsoft Graph API", { status: 500 })
+      res.status(500).send("Non-200 response from Microsoft Graph API")
+      return
     }
     if (data.userPrincipalName !== siteConfig.userPrincipalName) {
-      return new Response("Do not pretend to be the owner!", { status: 403 })
+      res.status(403).send("Do not pretend to be the owner!")
+      return
     }
-
 
     await storeOdAuthTokens({ accessToken, accessTokenExpiry, refreshToken })
     res.status(200).send('OK')
