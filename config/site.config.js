@@ -20,7 +20,7 @@ module.exports = {
   title: "Chiheisen Vercel Index",
 
   // The folder that you are to share publicly with Chiheisen-Vercel-Index. Use '/' if you want to share your root folder.
-  baseDirectory: '/Public',
+  baseDirectory: '/',
 
   // [OPTIONAL] This represents the maximum number of items that one directory lists, pagination supported.
   // Do note that this is limited up to 200 items by the upstream OneDrive API.
