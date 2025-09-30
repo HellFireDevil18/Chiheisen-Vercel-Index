@@ -37,21 +37,16 @@ export default function OAuthStep1() {
 
             <p className="py-1 text-sm font-medium text-yellow-400">
               <Trans>
-                <FontAwesomeIcon icon="exclamation-triangle" className="mr-1" /> If you have not specified a REDIS_URL
-                inside your Vercel env variable, go initialise one at{' '}
-                <a href="https://upstash.com/" target="_blank" rel="noopener noreferrer" className="underline">
-                  Upstash
+                <FontAwesomeIcon icon="exclamation-triangle" className="mr-1" /> If you have not specified a DATABASE_URL
+                inside your Vercel env variable, go set up a PostgreSQL database. You can use{' '}
+                <a href="https://vercel.com/storage/postgres" target="_blank" rel="noopener noreferrer" className="underline">
+                  Vercel Postgres
                 </a>
-                . Docs:{' '}
-                <a
-                  href="https://docs.upstash.com/redis/howto/vercelintegration"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="underline"
-                >
-                  Vercel Integration - Upstash
+                ,{' '}
+                <a href="https://neon.tech/" target="_blank" rel="noopener noreferrer" className="underline">
+                  Neon
                 </a>
-                .
+                , or any PostgreSQL provider.
               </Trans>
             </p>
 
