@@ -35,9 +35,9 @@ Showcase, share, preview, and download files inside *your* OneDrive with Chiheis
 2. Change `userPrincipleName` in `site.config.js` to your Microsoft account email address
 3. Change `baseDirectory` in `site.config.js` to a folder under your OneDrive root directory
 4. Optional - Check if you need to change `api.config.js`
-5. Import to Vercel and add an Upstash integration, which imports REDIS_URL env var to Vercel
+5. Import to Vercel and add a PostgreSQL database (Vercel Postgres or any PostgreSQL provider), which provides DATABASE_URL env var
 6. Trigger a redeploy, and profit! 🎉
-7. The deployed Chiheisen-Vercel-Index will guide you through an authorisation process, and store the required tokens in the Redis database
+7. The deployed Chiheisen-Vercel-Index will guide you through an authorisation process, and store the required tokens in the PostgreSQL database
 
 > 📚 For more detailed information, follow our [Deployment Guide](https://github.com/Chiheisen-Union/Chiheisen-Vercel-Index/wiki/Deployment-Guide)
 

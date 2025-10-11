@@ -29,7 +29,7 @@ export function encodePath(path: string): string {
 }
 
 /**
- * Fetch the access token from Redis storage and check if the token requires a renew
+ * Fetch the access token from PostgreSQL storage and check if the token requires a renew
  *
  * @returns Access token for OneDrive API
  */
