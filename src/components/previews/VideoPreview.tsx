@@ -60,7 +60,7 @@ const VideoPlayer: FC<{
     setTimeout(() => {
       const video = document.getElementById('plyr') as any
       if (video?.audioTracks?.length > 0) {
-        const tracks = []
+        const tracks: string[] = []
         for (let i = 0; i < video.audioTracks.length; i++) {
           const track = video.audioTracks[i]
           tracks.push(track.label || track.language || `Track ${i + 1}`)
