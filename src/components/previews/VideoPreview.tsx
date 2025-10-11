@@ -37,19 +37,33 @@ const VideoPlayer: FC<{
   useEffect(() => {
     if (!videoRef.current) return
 
-    // Initialize Video.js player
-    const player = videojs(videoRef.current, {
-      controls: true,
-      fluid: true,
-      aspectRatio: `${width ?? 16}:${height ?? 9}`,
-      poster: thumbnail,
-      controlBar: {
-        audioTrackButton: true, // Enable audio track button
-        subsCapsButton: true, // Enable subtitles/captions button
+    // Initialize Video.js player with all controls enabled
+    const player = videojs(
+      videoRef.current,
+      {
+        controls: true,
+        fluid: true,
+        aspectRatio: `${width ?? 16}:${height ?? 9}`,
+        poster: thumbnail,
+        html5: {
+          nativeTextTracks: false,
+          nativeAudioTracks: false,
+        },
       },
-    })
+      function onPlayerReady() {
+        console.log('Video.js player ready')
+      }
+    )
 
     playerRef.current = player
+
+    // Set video source first
+    if (!isFlv) {
+      player.src({
+        src: videoUrl,
+        type: 'video/mp4',
+      })
+    }
 
     // Load subtitle if available
     axios
@@ -58,9 +72,9 @@ const VideoPlayer: FC<{
         player.addRemoteTextTrack(
           {
             kind: 'captions',
-            label: videoName,
+            label: 'English',
+            srclang: 'en',
             src: URL.createObjectURL(resp.data),
-            default: true,
           },
           false
         )
@@ -74,12 +88,10 @@ const VideoPlayer: FC<{
       const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
       flv.attachMediaElement(videoRef.current)
       flv.load()
-    } else {
-      player.src({ src: videoUrl, type: 'video/mp4' })
     }
 
     return () => {
-      if (playerRef.current) {
+      if (playerRef.current && !playerRef.current.isDisposed()) {
         playerRef.current.dispose()
       }
     }
