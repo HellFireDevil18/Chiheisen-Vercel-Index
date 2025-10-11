@@ -1,13 +1,13 @@
 import type { OdFileObject } from '../../types'
 
-import { FC, useEffect, useState, useRef } from 'react'
+import { FC, useEffect, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useTranslation } from 'next-i18next'
 
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import Plyr from 'plyr-react'
-import type { PlyrProps, APITypes } from 'plyr-react'
+import videojs from 'video.js'
+import type Player from 'video.js/dist/types/player'
 import { useAsync } from 'react-async-hook'
 import { useClipboard } from 'use-clipboard-copy'
 
@@ -19,9 +19,7 @@ import { DownloadButton } from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
-import CustomEmbedLinkMenu from '../CustomEmbedLinkMenu'
-
-import 'plyr-react/plyr.css'
+import 'video.js/dist/video-js.css'
 
 const VideoPlayer: FC<{
   videoName: string
@@ -33,118 +31,63 @@ const VideoPlayer: FC<{
   isFlv: boolean
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
-  const [audioTracks, setAudioTracks] = useState<{ id: number; label: string; language: string }[]>([])
-  const [selectedTrack, setSelectedTrack] = useState<number>(0)
-  const plyrRef = useRef<APITypes>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const playerRef = useRef<Player | null>(null)
 
   useEffect(() => {
-    // Really really hacky way to inject subtitles as file blobs into the video element
+    if (!videoRef.current) return
+
+    // Initialize Video.js player
+    const player = videojs(videoRef.current, {
+      controls: true,
+      fluid: true,
+      aspectRatio: `${width ?? 16}:${height ?? 9}`,
+      poster: thumbnail,
+      controlBar: {
+        audioTrackButton: true, // Enable audio track button
+        subsCapsButton: true, // Enable subtitles/captions button
+      },
+    })
+
+    playerRef.current = player
+
+    // Load subtitle if available
     axios
       .get(subtitle, { responseType: 'blob' })
       .then(resp => {
-        const track = document.querySelector('track')
-        track?.setAttribute('src', URL.createObjectURL(resp.data))
+        player.addRemoteTextTrack(
+          {
+            kind: 'captions',
+            label: videoName,
+            src: URL.createObjectURL(resp.data),
+            default: true,
+          },
+          false
+        )
       })
       .catch(() => {
         console.log('Could not load subtitle.')
       })
 
-    if (isFlv) {
-      const loadFlv = () => {
-        // Really hacky way to get the exposed video element from Plyr
-        const video = document.getElementById('plyr') as HTMLVideoElement
-        const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
-        flv.attachMediaElement(video)
-        flv.load()
-      }
-      loadFlv()
+    // Handle FLV format
+    if (isFlv && mpegts) {
+      const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
+      flv.attachMediaElement(videoRef.current)
+      flv.load()
+    } else {
+      player.src({ src: videoUrl, type: 'video/mp4' })
     }
 
-    // Detect audio tracks after video loads
-    const detectAudioTracks = () => {
-      const video = document.getElementById('plyr') as any
-      if (video && video.audioTracks && video.audioTracks.length > 1) {
-        const tracks = Array.from(video.audioTracks).map((track: any, index: number) => ({
-          id: index,
-          label: track.label || `Audio Track ${index + 1}`,
-          language: track.language || 'unknown',
-        }))
-        setAudioTracks(tracks)
-
-        // Find the enabled track
-        const enabledIndex = Array.from(video.audioTracks).findIndex((track: any) => track.enabled)
-        if (enabledIndex !== -1) {
-          setSelectedTrack(enabledIndex)
-        }
+    return () => {
+      if (playerRef.current) {
+        playerRef.current.dispose()
       }
     }
+  }, [videoUrl, isFlv, mpegts, subtitle, thumbnail, videoName, width, height])
 
-    const video = document.getElementById('plyr') as any
-    if (video) {
-      video.addEventListener('loadedmetadata', detectAudioTracks)
-      return () => video.removeEventListener('loadedmetadata', detectAudioTracks)
-    }
-  }, [videoUrl, isFlv, mpegts, subtitle])
-
-  const handleAudioTrackChange = (trackId: number) => {
-    const video = document.getElementById('plyr') as any
-    if (video && video.audioTracks) {
-      Array.from(video.audioTracks).forEach((track: any, index: number) => {
-        track.enabled = index === trackId
-      })
-      setSelectedTrack(trackId)
-      toast.success(`Switched to ${audioTracks[trackId].label}`)
-    }
-  }
-
-  // Common plyr configs, including the video source and plyr options
-  const plyrSource: PlyrProps['source'] = {
-    type: 'video',
-    title: videoName,
-    poster: thumbnail,
-    tracks: [{ kind: 'captions', label: videoName, src: '', default: true }],
-  }
-  const plyrOptions: PlyrProps['options'] = {
-    ratio: `${width ?? 16}:${height ?? 9}`,
-    fullscreen: { iosNative: true },
-    controls: [
-      'play-large',
-      'play',
-      'progress',
-      'current-time',
-      'mute',
-      'volume',
-      'captions',
-      'settings',
-      'pip',
-      'airplay',
-      'fullscreen',
-    ],
-    settings: ['captions', 'quality', 'speed', 'loop'],
-  }
-  if (!isFlv) {
-    // If the video is not in flv format, we can use the native plyr and add sources directly with the video URL
-    plyrSource['sources'] = [{ src: videoUrl }]
-  }
   return (
-    <div className="relative">
-      <Plyr id="plyr" ref={plyrRef} source={plyrSource} options={plyrOptions} />
-      {audioTracks.length > 1 && (
-        <div className="mt-3 flex items-center justify-center gap-2">
-          <label className="text-sm font-medium">Audio Track:</label>
-          <select
-            value={selectedTrack}
-            onChange={e => handleAudioTrackChange(Number(e.target.value))}
-            className="rounded border border-gray-300 bg-white px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
-          >
-            {audioTracks.map(track => (
-              <option key={track.id} value={track.id}>
-                {track.label} {track.language !== 'unknown' && `(${track.language})`}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
+    <div data-vjs-player>
+      <video ref={videoRef} className="video-js vjs-big-play-centered" />
     </div>
   )
 }
@@ -153,8 +96,6 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
   const { asPath } = useRouter()
   const hashedToken = getStoredToken(asPath)
   const clipboard = useClipboard()
-
-  const [menuOpen, setMenuOpen] = useState(false)
   const { t } = useTranslation()
 
   // OneDrive generates thumbnails for its video files, we pick the thumbnail with the highest resolution
@@ -180,7 +121,6 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
 
   return (
     <>
-      <CustomEmbedLinkMenu path={asPath} menuOpen={menuOpen} setMenuOpen={setMenuOpen} />
       <PreviewContainer>
         {error ? (
           <FourOhFour errorMsg={error.message} />
@@ -217,13 +157,6 @@ const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
             btnText={t('Copy direct link')}
             btnIcon="copy"
           />
-          <DownloadButton
-            onClickCallback={() => setMenuOpen(true)}
-            btnColor="teal"
-            btnText={t('Customise link')}
-            btnIcon="pen"
-          />
-
           <DownloadButton
             onClickCallback={() => window.open(`iina://weblink?url=${getBaseUrl()}${videoUrl}`)}
             btnText="IINA"
