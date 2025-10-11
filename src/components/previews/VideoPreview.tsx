@@ -67,6 +67,20 @@ const VideoPlayer: FC<{
   const plyrOptions: PlyrProps['options'] = {
     ratio: `${width ?? 16}:${height ?? 9}`,
     fullscreen: { iosNative: true },
+    controls: [
+      'play-large',
+      'play',
+      'progress',
+      'current-time',
+      'mute',
+      'volume',
+      'captions',
+      'settings',
+      'pip',
+      'airplay',
+      'fullscreen',
+    ],
+    settings: ['captions', 'quality', 'speed', 'loop'],
   }
   if (!isFlv) {
     // If the video is not in flv format, we can use the native plyr and add sources directly with the video URL
