@@ -1,6 +1,6 @@
 import type { OdFileObject } from '../../types'
 
-import { FC, useEffect, useState } from 'react'
+import { FC, useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/router'
 import { useTranslation } from 'next-i18next'
 
@@ -33,6 +33,10 @@ const VideoPlayer: FC<{
   isFlv: boolean
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
+  const [audioTracks, setAudioTracks] = useState<{ id: number; label: string; language: string }[]>([])
+  const [selectedTrack, setSelectedTrack] = useState<number>(0)
+  const plyrRef = useRef<APITypes>(null)
+
   useEffect(() => {
     // Really really hacky way to inject subtitles as file blobs into the video element
     axios
@@ -48,14 +52,50 @@ const VideoPlayer: FC<{
     if (isFlv) {
       const loadFlv = () => {
         // Really hacky way to get the exposed video element from Plyr
-        const video = document.getElementById('plyr')
+        const video = document.getElementById('plyr') as HTMLVideoElement
         const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
         flv.attachMediaElement(video)
         flv.load()
       }
       loadFlv()
     }
+
+    // Detect audio tracks after video loads
+    const detectAudioTracks = () => {
+      const video = document.getElementById('plyr') as any
+      if (video && video.audioTracks && video.audioTracks.length > 1) {
+        const tracks = Array.from(video.audioTracks).map((track: any, index: number) => ({
+          id: index,
+          label: track.label || `Audio Track ${index + 1}`,
+          language: track.language || 'unknown',
+        }))
+        setAudioTracks(tracks)
+
+        // Find the enabled track
+        const enabledIndex = Array.from(video.audioTracks).findIndex((track: any) => track.enabled)
+        if (enabledIndex !== -1) {
+          setSelectedTrack(enabledIndex)
+        }
+      }
+    }
+
+    const video = document.getElementById('plyr') as any
+    if (video) {
+      video.addEventListener('loadedmetadata', detectAudioTracks)
+      return () => video.removeEventListener('loadedmetadata', detectAudioTracks)
+    }
   }, [videoUrl, isFlv, mpegts, subtitle])
+
+  const handleAudioTrackChange = (trackId: number) => {
+    const video = document.getElementById('plyr') as any
+    if (video && video.audioTracks) {
+      Array.from(video.audioTracks).forEach((track: any, index: number) => {
+        track.enabled = index === trackId
+      })
+      setSelectedTrack(trackId)
+      toast.success(`Switched to ${audioTracks[trackId].label}`)
+    }
+  }
 
   // Common plyr configs, including the video source and plyr options
   const plyrSource: PlyrProps['source'] = {
@@ -86,7 +126,27 @@ const VideoPlayer: FC<{
     // If the video is not in flv format, we can use the native plyr and add sources directly with the video URL
     plyrSource['sources'] = [{ src: videoUrl }]
   }
-  return <Plyr id="plyr" source={plyrSource} options={plyrOptions} />
+  return (
+    <div className="relative">
+      <Plyr id="plyr" ref={plyrRef} source={plyrSource} options={plyrOptions} />
+      {audioTracks.length > 1 && (
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <label className="text-sm font-medium">Audio Track:</label>
+          <select
+            value={selectedTrack}
+            onChange={e => handleAudioTrackChange(Number(e.target.value))}
+            className="rounded border border-gray-300 bg-white px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-800"
+          >
+            {audioTracks.map(track => (
+              <option key={track.id} value={track.id}>
+                {track.label} {track.language !== 'unknown' && `(${track.language})`}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
+  )
 }
 
 const VideoPreview: FC<{ file: OdFileObject }> = ({ file }) => {
