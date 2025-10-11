@@ -1,13 +1,13 @@
 import type { OdFileObject } from '../../types'
 
-import { FC, useEffect, useRef } from 'react'
+import { FC, useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/router'
 import { useTranslation } from 'next-i18next'
 
 import axios from 'axios'
 import toast from 'react-hot-toast'
-import videojs from 'video.js'
-import type Player from 'video.js/dist/types/player'
+import Plyr from 'plyr-react'
+import type { APITypes } from 'plyr-react'
 import { useAsync } from 'react-async-hook'
 import { useClipboard } from 'use-clipboard-copy'
 
@@ -19,7 +19,7 @@ import { DownloadButton } from '../DownloadBtnGtoup'
 import { DownloadBtnContainer, PreviewContainer } from './Containers'
 import FourOhFour from '../FourOhFour'
 import Loading from '../Loading'
-import 'video.js/dist/video-js.css'
+import 'plyr-react/plyr.css'
 
 const VideoPlayer: FC<{
   videoName: string
@@ -31,75 +31,90 @@ const VideoPlayer: FC<{
   isFlv: boolean
   mpegts: any
 }> = ({ videoName, videoUrl, width, height, thumbnail, subtitle, isFlv, mpegts }) => {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const playerRef = useRef<Player | null>(null)
+  const plyrRef = useRef<APITypes>(null)
+  const [audioTracks, setAudioTracks] = useState<string[]>([])
+  const [currentTrack, setCurrentTrack] = useState(0)
 
   useEffect(() => {
-    if (!videoRef.current) return
-
-    // Initialize Video.js player with all controls enabled
-    const player = videojs(
-      videoRef.current,
-      {
-        controls: true,
-        fluid: true,
-        aspectRatio: `${width ?? 16}:${height ?? 9}`,
-        poster: thumbnail,
-        html5: {
-          nativeTextTracks: false,
-          nativeAudioTracks: false,
-        },
-      },
-      function onPlayerReady() {
-        console.log('Video.js player ready')
-      }
-    )
-
-    playerRef.current = player
-
-    // Set video source first
-    if (!isFlv) {
-      player.src({
-        src: videoUrl,
-        type: 'video/mp4',
-      })
-    }
-
-    // Load subtitle if available
     axios
       .get(subtitle, { responseType: 'blob' })
       .then(resp => {
-        player.addRemoteTextTrack(
-          {
-            kind: 'captions',
-            label: 'English',
-            srclang: 'en',
-            src: URL.createObjectURL(resp.data),
-          },
-          false
-        )
+        const track = document.querySelector('track')
+        track?.setAttribute('src', URL.createObjectURL(resp.data))
       })
       .catch(() => {
         console.log('Could not load subtitle.')
       })
 
-    // Handle FLV format
-    if (isFlv && mpegts) {
-      const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
-      flv.attachMediaElement(videoRef.current)
-      flv.load()
+    if (isFlv) {
+      const loadFlv = () => {
+        const video = document.getElementById('plyr') as HTMLVideoElement
+        const flv = mpegts.createPlayer({ url: videoUrl, type: 'flv' })
+        flv.attachMediaElement(video)
+        flv.load()
+      }
+      loadFlv()
     }
 
-    return () => {
-      if (playerRef.current && !playerRef.current.isDisposed()) {
-        playerRef.current.dispose()
+    // Check for audio tracks after video loads
+    setTimeout(() => {
+      const video = document.getElementById('plyr') as any
+      if (video?.audioTracks?.length > 0) {
+        const tracks = []
+        for (let i = 0; i < video.audioTracks.length; i++) {
+          const track = video.audioTracks[i]
+          tracks.push(track.label || track.language || `Track ${i + 1}`)
+          if (track.enabled) setCurrentTrack(i)
+        }
+        setAudioTracks(tracks)
       }
+    }, 1000)
+  }, [videoUrl, isFlv, mpegts, subtitle])
+
+  const switchAudioTrack = (index: number) => {
+    const video = document.getElementById('plyr') as any
+    if (video?.audioTracks) {
+      for (let i = 0; i < video.audioTracks.length; i++) {
+        video.audioTracks[i].enabled = i === index
+      }
+      setCurrentTrack(index)
+      toast.success(`Switched to ${audioTracks[index]}`)
     }
-  }, [videoUrl, isFlv, mpegts, subtitle, thumbnail, videoName, width, height])
+  }
+
+  const plyrSource = {
+    type: 'video' as const,
+    title: videoName,
+    poster: thumbnail,
+    sources: isFlv ? [] : [{ src: videoUrl }],
+    tracks: [{ kind: 'captions' as const, label: videoName, src: '', default: true }],
+  }
+
+  const plyrOptions = {
+    ratio: `${width ?? 16}:${height ?? 9}`,
+    fullscreen: { iosNative: true },
+    settings: ['captions', 'quality', 'speed'],
+  }
 
   return (
-    <div data-vjs-player>
-      <video ref={videoRef} className="video-js vjs-big-play-centered" />
+    <div>
+      <Plyr id="plyr" ref={plyrRef} source={plyrSource} options={plyrOptions} />
+      {audioTracks.length > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-3 rounded-lg bg-gray-100 p-3 dark:bg-gray-800">
+          <span className="text-sm font-medium">🎵 Audio Track:</span>
+          <select
+            value={currentTrack}
+            onChange={e => switchAudioTrack(Number(e.target.value))}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-600 dark:bg-gray-700"
+          >
+            {audioTracks.map((track, i) => (
+              <option key={i} value={i}>
+                {track}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
     </div>
   )
 }
